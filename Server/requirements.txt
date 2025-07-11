@@ -1,0 +1,12 @@
+chromadb
+requests
+cryptography
+fastapi
+uvicorn
+python-dotenv
+google-generativeai
+supabase
+chromadb
+PyMuPDF
+
+#pip install -r requirements.txt
