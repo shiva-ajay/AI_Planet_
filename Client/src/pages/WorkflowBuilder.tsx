@@ -49,7 +49,6 @@ const WorkflowBuilderPage: React.FC = () => {
     setDraggedType,
     removeNode,
     removeEdge,
-    saveWorkflow,
     loadWorkflow,
   } = useWorkflowStore();
 
@@ -228,12 +227,9 @@ const WorkflowBuilderPage: React.FC = () => {
   // Run workflow and show output in OutputNode
   const handleRunWorkflow = async () => {
     if (!selectedWorkflowId) return;
-    setIsLoading(true);
     try {
       // Find the UserQuery node and get its query value
-      const userQueryNode = nodes.find(
-        (node) => node.type === "userQueryNode"
-      );
+      const userQueryNode = nodes.find((node) => node.type === "userQueryNode");
       const userQuery = userQueryNode?.data?.config?.query || "";
 
       const response = await fetch("http://127.0.0.1:8000/api/execute", {
@@ -245,7 +241,8 @@ const WorkflowBuilderPage: React.FC = () => {
         }),
       });
       const data = await response.json();
-      const finalResponse = data?.workflow_response?.final_response || "No response.";
+      const finalResponse =
+        data?.workflow_response?.final_response || "No response.";
 
       // Update OutputNode config with the final response
       const outputNode = nodes.find((node) => node.type === "outputNode");
@@ -259,24 +256,6 @@ const WorkflowBuilderPage: React.FC = () => {
       toast.success("Workflow executed successfully");
     } catch (e) {
       toast.error("Error running workflow");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLoad = async () => {
-    if (selectedWorkflowId) {
-      setIsLoading(true);
-      try {
-        const success = await loadWorkflow(selectedWorkflowId);
-        if (!success) {
-          toast.error("Failed to load workflow");
-        }
-      } catch (e: any) {
-        toast.error(e.message || "Error loading workflow");
-      } finally {
-        setIsLoading(false);
-      }
     }
   };
 
