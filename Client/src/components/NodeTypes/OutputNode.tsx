@@ -13,9 +13,10 @@ export const OutputNode: React.FC<NodeProps<NodeData>> = ({ selected, data }) =>
   const outputText = typeof data?.config?.output === "string"
     ? data.config.output
     : "Output will be generated based on query";
+  
   return (
     <div
-      className={`bg-white rounded-lg border-2 p-4 min-w-[280px] ${
+      className={`bg-white rounded-lg border-2 p-4 w-[280px] ${
         selected ? "border-blue-500" : "border-gray-200"
       }`}
     >
@@ -45,7 +46,7 @@ export const OutputNode: React.FC<NodeProps<NodeData>> = ({ selected, data }) =>
         </div>
         <div>
           <label className="text-xs font-medium">Output Text</label>
-          <div className="mt-1 p-2 border rounded text-sm bg-gray-50 text-gray-600">
+          <div className="mt-1 p-2 border rounded text-sm bg-gray-50 text-gray-600 h-20 overflow-y-auto break-words">
             {outputText}
           </div>
         </div>

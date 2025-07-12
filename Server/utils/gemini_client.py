@@ -17,7 +17,7 @@ def _configure_gemini(api_key: str):
         print(f"Gemini: Failed to configure: {e}")
         raise genai.APIError(f"Failed to configure Gemini: {e}")
 
-def get_gemini_model(api_key: str, model_name: str = "gemini-pro"):
+def get_gemini_model(api_key: str, model_name: str = "gemini-1.5-flash"):
     """
     Initializes and returns a configured Gemini GenerativeModel instance.
 

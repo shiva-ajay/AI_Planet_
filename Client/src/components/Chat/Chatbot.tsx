@@ -1,8 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, X, User, Bot } from 'lucide-react';
+import React, { useState, useRef, useEffect } from "react";
+import { Send, X, User, Bot } from "lucide-react";
+import axios from "axios";
 
 interface ChatMessage {
-  role: 'user' | 'bot';
+  role: "user" | "bot";
   message: string;
   timestamp: string;
 }
@@ -10,47 +11,92 @@ interface ChatMessage {
 interface ChatbotProps {
   isOpen?: boolean;
   onClose?: () => void;
-  chatHistory?: ChatMessage[];
-  onSendMessage?: (message: string) => void;
-  isLoading?: boolean;
+  workflowId: string;
 }
 
-const Chatbot: React.FC<ChatbotProps> = ({ 
-  isOpen = true, 
-  onClose, 
-  chatHistory = [], 
-  onSendMessage,
-  isLoading = false 
+const Chatbot: React.FC<ChatbotProps> = ({
+  isOpen = true,
+  onClose,
+  workflowId,
 }) => {
-  const [inputMessage, setInputMessage] = useState('');
+  const [inputMessage, setInputMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
     scrollToBottom();
   }, [chatHistory]);
 
-  const handleSendMessage = () => {
-    if (inputMessage.trim() && onSendMessage) {
-      onSendMessage(inputMessage.trim());
-      setInputMessage('');
+  const handleSendMessage = async () => {
+    const trimmedMessage = inputMessage.trim();
+    if (!trimmedMessage) return;
+
+    setIsLoading(true);
+    setInputMessage("");
+
+    try {
+      const response = await axios.post("http://127.0.0.1:8000/api/execute", {
+        workflow_id: workflowId,
+        user_query: trimmedMessage,
+      });
+
+      const data = response.data;
+      // If chat_history is present, use it to set chatHistory
+      if (Array.isArray(data.chat_history)) {
+        setChatHistory(data.chat_history);
+      } else {
+        // Fallback: append user and bot message
+        setChatHistory((prev) => [
+          ...prev,
+          {
+            role: "user",
+            message: trimmedMessage,
+            timestamp: new Date().toISOString(),
+          },
+          {
+            role: "bot",
+            message:
+              data.workflow_response?.final_response ||
+              "Sorry, I couldn’t get a response.",
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+      }
+    } catch (err) {
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "user",
+          message: trimmedMessage,
+          timestamp: new Date().toISOString(),
+        },
+        {
+          role: "bot",
+          message: "❌ Error calling AI model. Try again.",
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
   const formatTimestamp = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString([], { 
-      hour: '2-digit', 
-      minute: '2-digit' 
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
     });
   };
 
@@ -80,7 +126,7 @@ const Chatbot: React.FC<ChatbotProps> = ({
           )}
         </div>
 
-        {/* Messages */}
+        {/* Chat messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {chatHistory.length === 0 ? (
             <div className="text-center text-gray-500 py-8">
@@ -91,28 +137,32 @@ const Chatbot: React.FC<ChatbotProps> = ({
             chatHistory.map((msg, index) => (
               <div
                 key={index}
-                className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                className={`flex gap-3 ${
+                  msg.role === "user" ? "justify-end" : "justify-start"
+                }`}
               >
-                {msg.role === 'bot' && (
+                {msg.role === "bot" && (
                   <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
                     <Bot className="w-4 h-4 text-white" />
                   </div>
                 )}
                 <div
                   className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                    msg.role === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100 text-gray-900'
+                    msg.role === "user"
+                      ? "bg-blue-500 text-white"
+                      : "bg-gray-100 text-gray-900"
                   }`}
                 >
                   <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                  <p className={`text-xs mt-1 ${
-                    msg.role === 'user' ? 'text-blue-100' : 'text-gray-500'
-                  }`}>
+                  <p
+                    className={`text-xs mt-1 ${
+                      msg.role === "user" ? "text-blue-100" : "text-gray-500"
+                    }`}
+                  >
                     {formatTimestamp(msg.timestamp)}
                   </p>
                 </div>
-                {msg.role === 'user' && (
+                {msg.role === "user" && (
                   <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
                     <User className="w-4 h-4 text-white" />
                   </div>
@@ -120,7 +170,7 @@ const Chatbot: React.FC<ChatbotProps> = ({
               </div>
             ))
           )}
-          
+
           {isLoading && (
             <div className="flex gap-3 justify-start">
               <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center flex-shrink-0">
@@ -129,13 +179,19 @@ const Chatbot: React.FC<ChatbotProps> = ({
               <div className="bg-gray-100 rounded-lg px-4 py-2">
                 <div className="flex space-x-1">
                   <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.1s" }}
+                  ></div>
+                  <div
+                    className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.2s" }}
+                  ></div>
                 </div>
               </div>
             </div>
           )}
-          
+
           <div ref={messagesEndRef} />
         </div>
 
@@ -165,67 +221,4 @@ const Chatbot: React.FC<ChatbotProps> = ({
   );
 };
 
-// Example usage with sample data
-const App = () => {
-  const [isOpen, setIsOpen] = useState(true);
-  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([
-    {
-      role: "user",
-      message: "who is Shiva Ajay?",
-      timestamp: "2025-07-11T22:52:57.008175"
-    },
-    {
-      role: "bot",
-      message: "Based on the provided text, Shivaay is a character, not a person, played by Ajay Devgn in a film. The text describes Shivaay as a mountaineer. How are you?",
-      timestamp: "2025-07-11T22:52:57.304807"
-    }
-  ]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleSendMessage = (message: string) => {
-    // Add user message to chat history
-    const userMessage: ChatMessage = {
-      role: 'user',
-      message,
-      timestamp: new Date().toISOString()
-    };
-    
-    setChatHistory(prev => [...prev, userMessage]);
-    setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
-      const botMessage: ChatMessage = {
-        role: 'bot',
-        message: "This is a simulated response. In your actual implementation, this would come from your backend API.",
-        timestamp: new Date().toISOString()
-      };
-      setChatHistory(prev => [...prev, botMessage]);
-      setIsLoading(false);
-    }, 1500);
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold mb-4">GenAI Stack Chatbot</h1>
-        <button
-          onClick={() => setIsOpen(true)}
-          className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-        >
-          Open Chat
-        </button>
-      </div>
-      
-      <Chatbot
-        isOpen={isOpen}
-        onClose={() => setIsOpen(false)}
-        chatHistory={chatHistory}
-        onSendMessage={handleSendMessage}
-        isLoading={isLoading}
-      />
-    </div>
-  );
-};
-
-export default App;
+export default Chatbot;
