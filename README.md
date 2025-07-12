@@ -1,4 +1,4 @@
-# 🧠 GenAI Stack - No-Code AI Workflow Builder
+# 🧠 No-Code AI Workflow Builder
 
 GenAI Stack is a **low-code/no-code platform** to visually build, configure, and run intelligent workflows using LLMs, embeddings, knowledge bases, and vector search. Built for fast prototyping and production-ready use-cases.
 
