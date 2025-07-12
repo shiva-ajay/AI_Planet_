@@ -225,21 +225,42 @@ const WorkflowBuilderPage: React.FC = () => {
     }
   };
 
-  const handleSave = async () => {
-    if (selectedWorkflowId) {
-      setIsLoading(true);
-      try {
-        const success = await saveWorkflow();
-        if (success) {
-          toast.success("Workflow saved successfully");
-        } else {
-          toast.error("Failed to save workflow");
-        }
-      } catch (e: any) {
-        toast.error(e.message || "Error saving workflow");
-      } finally {
-        setIsLoading(false);
+  // Run workflow and show output in OutputNode
+  const handleRunWorkflow = async () => {
+    if (!selectedWorkflowId) return;
+    setIsLoading(true);
+    try {
+      // Find the UserQuery node and get its query value
+      const userQueryNode = nodes.find(
+        (node) => node.type === "userQueryNode"
+      );
+      const userQuery = userQueryNode?.data?.config?.query || "";
+
+      const response = await fetch("http://127.0.0.1:8000/api/execute", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          workflow_id: selectedWorkflowId,
+          user_query: userQuery,
+        }),
+      });
+      const data = await response.json();
+      const finalResponse = data?.workflow_response?.final_response || "No response.";
+
+      // Update OutputNode config with the final response
+      const outputNode = nodes.find((node) => node.type === "outputNode");
+      if (outputNode) {
+        // Use Zustand store action to update node config
+        const updateNodeConfig = useWorkflowStore.getState().updateNodeConfig;
+        updateNodeConfig(outputNode.id, {
+          output: finalResponse,
+        });
       }
+      toast.success("Workflow executed successfully");
+    } catch (e) {
+      toast.error("Error running workflow");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -305,7 +326,7 @@ const WorkflowBuilderPage: React.FC = () => {
           </ReactFlow>
           <div className="fixed bottom-4 right-4 flex flex-col space-y-2 z-10">
             <button
-              onClick={handleSave}
+              onClick={handleRunWorkflow}
               className="bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 disabled:bg-blue-300 flex items-center justify-center"
               disabled={isLoading}
               title="Run Workflow"
