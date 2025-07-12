@@ -18,8 +18,8 @@ import { UserQueryNode } from "../components/NodeTypes/UserQueryNode";
 import { Header } from "../components/Layout/Header";
 import { Sidebar } from "../components/Layout/SideBar";
 import { Brain, Database, FileOutput, MessageSquare } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify"; // Import react-toastify
-import "react-toastify/dist/ReactToastify.css"; // Import toastify styles
+import { ToastContainer, toast } from "react-toastify"; 
+import "react-toastify/dist/ReactToastify.css"; 
 import Chatbot from "../components/Chat/Chatbot";
 
 const nodeTypes = {

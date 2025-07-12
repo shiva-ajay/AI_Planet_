@@ -117,22 +117,13 @@ const HomePage: React.FC = () => {
           </div>
         </div>
       </main>
-
-      {/* White background section that starts from middle of stats box */}
-      <div className="bg-white relative -mt-20 pt-24">
+      <div className="bg-white absolute  -mt-40 h-[30%] w-[100%] pt-24">
         {/* Footer */}
         <footer className="text-center py-8">
           <p className="text-gray-600">
             Trusted by leading organizations and 300k+ global community
           </p>
         </footer>
-      </div>
-
-      {/* Floating Element */}
-      <div className="fixed bottom-6 right-6">
-        <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center shadow-lg">
-          <span className="text-white font-bold">?</span>
-        </div>
       </div>
     </div>
   );

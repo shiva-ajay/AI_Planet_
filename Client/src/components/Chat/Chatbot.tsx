@@ -66,7 +66,7 @@ const Chatbot: React.FC<ChatbotProps> = ({
               <Bot className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-semibold text-gray-900">GenAI Stack Chat</h3>
+              <h3 className="font-semibold text-gray-900">Chat Bot</h3>
               <p className="text-sm text-gray-500">AI Assistant</p>
             </div>
           </div>

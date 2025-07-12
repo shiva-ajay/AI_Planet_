@@ -26,47 +26,95 @@ const GenAIStackPage: React.FC = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchWorkflows = async () => {
-      setLoading(true);
-      try {
-        const response = await axios.get<Stack[]>(`${API_BASE_URL}/list`);
-        setStacks(response.data);
-      } catch (err) {
-        console.error("Error fetching workflows:", err);
-        toast.error("Failed to load workflows. Please try again.");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchWorkflows();
   }, []);
+
+  const fetchWorkflows = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get<Stack[]>(`${API_BASE_URL}/list`);
+      setStacks(response.data);
+    } catch (err) {
+      console.error("Error fetching workflows:", err);
+      toast.error("Failed to load workflows. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleCreateStack = async () => {
     if (formData.name.trim() && formData.description.trim()) {
       setLoading(true);
-      const newWorkflowId = await createWorkflow(
-        formData.name,
-        formData.description
+      
+      // Store the current workflow count before creation
+      const initialWorkflowCount = stacks.length;
+      
+      try {
+        const newWorkflowId = await createWorkflow(
+          formData.name,
+          formData.description
+        );
+        
+        if (newWorkflowId) {
+          // Success case - workflow created successfully
+          setFormData({ name: "", description: "" });
+          setIsModalOpen(false);
+          resetWorkflowBuilder();
+          setSelectedWorkflowId(newWorkflowId);
+          
+          // Refetch workflows to get the updated list
+          await fetchWorkflows();
+          toast.success("Workflow created successfully!");
+        } else {
+          // createWorkflow returned null/undefined, but check if it was created anyway
+          await checkIfWorkflowWasCreated(initialWorkflowCount);
+        }
+      } catch (err) {
+        console.error("Error creating workflow:", err);
+        
+        // Check if workflow was created despite the error
+        await checkIfWorkflowWasCreated(initialWorkflowCount);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      toast.error("Please fill in both name and description fields.");
+    }
+  };
+
+  const checkIfWorkflowWasCreated = async (initialCount: number) => {
+    try {
+      // Wait a bit for the database to update
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      const response = await axios.get<Stack[]>(`${API_BASE_URL}/list`);
+      const updatedStacks = response.data;
+      
+      // Check if a new workflow was added by looking for one with matching name and description
+      const newWorkflow = updatedStacks.find(
+        stack => stack.name.trim() === formData.name.trim() && 
+                 stack.description.trim() === formData.description.trim()
       );
-      setLoading(false);
-      if (newWorkflowId) {
-        const newStack: Stack = {
-          id: newWorkflowId,
-          name: formData.name,
-          description: formData.description,
-        };
-        setStacks((prevStacks) => [...prevStacks, newStack]);
+      
+      if (newWorkflow || updatedStacks.length > initialCount) {
+        // Workflow was created in DB despite the error
+        setStacks(updatedStacks);
         setFormData({ name: "", description: "" });
         setIsModalOpen(false);
-
         resetWorkflowBuilder();
-        setSelectedWorkflowId(newWorkflowId);
-
-        navigate("/workflow-builder");
+        
+        if (newWorkflow) {
+          setSelectedWorkflowId(newWorkflow.id);
+        }
+        
         toast.success("Workflow created successfully!");
       } else {
-        toast.error("Failed to create new workflow. Please try again.");
+        // Workflow was not created
+        toast.error("Failed to create workflow. Please try again.");
       }
+    } catch (refetchError) {
+      console.error("Error checking workflow creation:", refetchError);
+      toast.error("Failed to verify workflow creation. Please refresh the page.");
     }
   };
 
@@ -195,10 +243,6 @@ const GenAIStackPage: React.FC = () => {
                 <p className="text-gray-600 text-sm mb-4 line-clamp-3">
                   {stack.description}
                 </p>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-gray-500">Edit Stack</span>
-                  <Edit2 size={12} className="text-gray-400" />
-                </div>
               </div>
             ))}
           </div>
@@ -263,8 +307,9 @@ const GenAIStackPage: React.FC = () => {
               <button
                 onClick={handleCreateStack}
                 className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                disabled={loading}
               >
-                Create
+                {loading ? "Creating..." : "Create"}
               </button>
             </div>
           </div>
