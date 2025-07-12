@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Send, X, User, Bot } from "lucide-react";
+import axios from "axios";
 
 interface ChatMessage {
   role: "user" | "bot";
@@ -10,19 +11,17 @@ interface ChatMessage {
 interface ChatbotProps {
   isOpen?: boolean;
   onClose?: () => void;
-  chatHistory?: ChatMessage[];
-  onSendMessage?: (message: string) => void;
-  isLoading?: boolean;
+  workflowId: string;
 }
 
-export const Chatbot: React.FC<ChatbotProps> = ({
+const Chatbot: React.FC<ChatbotProps> = ({
   isOpen = true,
   onClose,
-  chatHistory = [],
-  onSendMessage,
-  isLoading = false,
+  workflowId,
 }) => {
   const [inputMessage, setInputMessage] = useState("");
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -33,10 +32,57 @@ export const Chatbot: React.FC<ChatbotProps> = ({
     scrollToBottom();
   }, [chatHistory]);
 
-  const handleSendMessage = () => {
-    if (inputMessage.trim() && onSendMessage) {
-      onSendMessage(inputMessage.trim());
-      setInputMessage("");
+  const handleSendMessage = async () => {
+    const trimmedMessage = inputMessage.trim();
+    if (!trimmedMessage) return;
+
+    setIsLoading(true);
+    setInputMessage("");
+
+    try {
+      const response = await axios.post("http://127.0.0.1:8000/api/execute", {
+        workflow_id: workflowId,
+        user_query: trimmedMessage,
+      });
+
+      const data = response.data;
+      // If chat_history is present, use it to set chatHistory
+      if (Array.isArray(data.chat_history)) {
+        setChatHistory(data.chat_history);
+      } else {
+        // Fallback: append user and bot message
+        setChatHistory((prev) => [
+          ...prev,
+          {
+            role: "user",
+            message: trimmedMessage,
+            timestamp: new Date().toISOString(),
+          },
+          {
+            role: "bot",
+            message:
+              data.workflow_response?.final_response ||
+              "Sorry, I couldn’t get a response.",
+            timestamp: new Date().toISOString(),
+          },
+        ]);
+      }
+    } catch (err) {
+      setChatHistory((prev) => [
+        ...prev,
+        {
+          role: "user",
+          message: trimmedMessage,
+          timestamp: new Date().toISOString(),
+        },
+        {
+          role: "bot",
+          message: "❌ Error calling AI model. Try again.",
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -80,7 +126,7 @@ export const Chatbot: React.FC<ChatbotProps> = ({
           )}
         </div>
 
-        {/* Messages */}
+        {/* Chat messages */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {chatHistory.length === 0 ? (
             <div className="text-center text-gray-500 py-8">
@@ -175,6 +221,4 @@ export const Chatbot: React.FC<ChatbotProps> = ({
   );
 };
 
-// ...existing code...
-// Export Chatbot for usage and Fast Refresh
 export default Chatbot;

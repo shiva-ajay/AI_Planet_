@@ -1,9 +1,10 @@
-// src/pages/GenAIStackPage.tsx
 import React, { useState, useEffect } from "react";
 import { Plus, Edit2, X, User } from "lucide-react";
 import { useWorkflowStore } from "../store/workflowStore";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 interface Stack {
   id: string;
@@ -18,7 +19,6 @@ const GenAIStackPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({ name: "", description: "" });
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const { createWorkflow, resetWorkflowBuilder, setSelectedWorkflowId } =
     useWorkflowStore();
@@ -28,13 +28,12 @@ const GenAIStackPage: React.FC = () => {
   useEffect(() => {
     const fetchWorkflows = async () => {
       setLoading(true);
-      setError(null);
       try {
         const response = await axios.get<Stack[]>(`${API_BASE_URL}/list`);
         setStacks(response.data);
       } catch (err) {
         console.error("Error fetching workflows:", err);
-        setError("Failed to load workflows. Please try again.");
+        toast.error("Failed to load workflows. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -64,8 +63,9 @@ const GenAIStackPage: React.FC = () => {
         setSelectedWorkflowId(newWorkflowId);
 
         navigate("/workflow-builder");
+        toast.success("Workflow created successfully!");
       } else {
-        setError("Failed to create new workflow. Please try again.");
+        toast.error("Failed to create new workflow. Please try again.");
       }
     }
   };
@@ -74,7 +74,6 @@ const GenAIStackPage: React.FC = () => {
     resetWorkflowBuilder();
     setSelectedWorkflowId(stackId);
     setLoading(true);
-    setError(null);
 
     try {
       const response = await axios.get(`${API_BASE_URL}/${stackId}`);
@@ -95,7 +94,7 @@ const GenAIStackPage: React.FC = () => {
       navigate("/workflow-builder");
     } catch (err) {
       console.error(`Error fetching workflow with ID ${stackId}:`, err);
-      setError("Failed to load workflow. Please try again.");
+      toast.error("Failed to load workflow. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -135,7 +134,7 @@ const GenAIStackPage: React.FC = () => {
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <h2 className="text-2xl font-bold text-gray-900">My Stacks</h2>
-          {stacks.length > 0 && ( // Only show "New Stack" button if there are existing stacks
+          {stacks.length > 0 && (
             <button
               onClick={openModal}
               className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
@@ -152,14 +151,8 @@ const GenAIStackPage: React.FC = () => {
           </div>
         )}
 
-        {error && (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <p className="text-red-600 text-lg">{error}</p>
-          </div>
-        )}
-
         {/* Empty State */}
-        {!loading && !error && stacks.length === 0 && (
+        {!loading && stacks.length === 0 && (
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">
@@ -181,7 +174,7 @@ const GenAIStackPage: React.FC = () => {
         )}
 
         {/* Stack Cards - 4 per row grid */}
-        {!loading && !error && stacks.length > 0 && (
+        {!loading && stacks.length > 0 && (
           <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {stacks.map((stack) => (
               <div
@@ -277,6 +270,17 @@ const GenAIStackPage: React.FC = () => {
           </div>
         </div>
       )}
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 };

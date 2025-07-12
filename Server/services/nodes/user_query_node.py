@@ -1,12 +1,8 @@
-# services/nodes/user_query_node.py
-
 from typing import Dict, Any
 
 async def process_query(query: str) -> Dict[str, Any]:
     """
-    Processes the user query. This node primarily serves as the entry point
-    for the workflow, taking the raw user query and passing it along.
-    Made async for consistency with other node processors.
+    Processes the user query as the workflow entry point.
 
     Args:
         query (str): The user's input query.
@@ -14,6 +10,5 @@ async def process_query(query: str) -> Dict[str, Any]:
     Returns:
         Dict[str, Any]: A dictionary containing the processed query.
     """
-    print(f"UserQueryNode: Processing query: '{query}'")
+    print(f"Processing query: '{query}'")
     return {"query": query}
-

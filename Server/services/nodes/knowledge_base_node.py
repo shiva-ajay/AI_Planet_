@@ -1,9 +1,8 @@
-# services/nodes/knowledge_base_node.py
 
 from typing import List, Dict, Any
 import google.generativeai as genai
 import chromadb
-from utils.gemini_client import embed_document_gemini # This is a synchronous function
+from utils.gemini_client import embed_document_gemini
 from utils.chroma_client import get_chroma_collection
 from fastapi import HTTPException
 
@@ -26,34 +25,31 @@ async def process_knowledge_retrieval(
         Dict[str, Any]: A dictionary containing the concatenated relevant context.
                         Returns an empty string if no context is found or on error.
     """
-    print(f"KnowledgeBaseNode: Processing query for context: '{query}' for workflow '{workflow_id}'")
+    print(f"Processing query: '{query}' for workflow '{workflow_id}'")
     relevant_context = ""
     try:
-        # CRITICAL FIX: Ensure NO 'await' is used here, as embed_document_gemini is synchronous.
         query_embedding = embed_document_gemini(text_chunk=query, api_key=embedding_api_key)
-        print("KnowledgeBaseNode: Query embedded.")
+        print("Query embedded.")
 
-        # ChromaDB operations are typically synchronous.
         collection = get_chroma_collection(collection_name="doc_chunks")
-        print("KnowledgeBaseNode: ChromaDB collection accessed.")
+        print("ChromaDB collection accessed.")
 
         results = collection.query(
-            query_embeddings=[query_embedding], # query_embedding is a list, so [query_embedding] is a list of lists, which ChromaDB expects.
+            query_embeddings=[query_embedding],
             n_results=top_n_results,
             where={"workflow_id": workflow_id}
         )
-        print(f"KnowledgeBaseNode: ChromaDB query returned {len(results.get('documents', []))} results.")
+        print(f"ChromaDB returned {len(results.get('documents', []))} results.")
 
         if results and results.get("documents"):
             relevant_docs = results['documents'][0]
             relevant_context = "\n\n".join(relevant_docs)
-            print(f"KnowledgeBaseNode: Retrieved context (first 200 chars): '{relevant_context[:200]}...'")
+            print(f"Retrieved context: '{relevant_context[:200]}...'")
         else:
-            print("KnowledgeBaseNode: No relevant documents found in ChromaDB.")
+            print("No relevant documents found.")
 
     except Exception as e:
-        print(f"KnowledgeBaseNode Error: An error occurred during knowledge retrieval (Gemini API or other): {e}")
+        print(f"Error in knowledge retrieval: {e}")
         raise HTTPException(status_code=500, detail=f"Error in KnowledgeBaseNode: {str(e)}")
 
     return {"context": relevant_context}
-

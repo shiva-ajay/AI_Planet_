@@ -1,12 +1,15 @@
-import React from 'react';
-import { MessageSquare } from 'lucide-react';
+import React from "react";
+import { MessageSquare } from "lucide-react";
 
 interface SidebarProps {
   componentTypes: { type: string; label: string; icon: React.ElementType }[];
   onDragStart: (event: React.DragEvent, nodeType: string) => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ componentTypes, onDragStart }) => (
+export const Sidebar: React.FC<SidebarProps> = ({
+  componentTypes,
+  onDragStart,
+}) => (
   <div className="w-64 bg-white border-r border-gray-200 flex flex-col">
     <div className="p-4 border-b border-gray-200">
       <div className="flex items-center gap-2 mb-4">
@@ -14,7 +17,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ componentTypes, onDragStart })
         <span className="font-medium">Chat With AI</span>
       </div>
     </div>
-    
+
     <div className="p-4">
       <h3 className="font-medium text-sm text-gray-700 mb-3">Components</h3>
       <div className="space-y-2">

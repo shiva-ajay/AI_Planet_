@@ -1,20 +1,10 @@
-# utils/chroma_client.py
 
 import chromadb
 import os
 
-# Initialize ChromaDB client globally.
-# For persistent storage, you'd configure a path or a client connection.
-# For development, an in-memory client is often sufficient.
-# If you're using a persistent client, ensure its path is correctly set.
-# Example for persistent client:
-# CHROMA_DB_PATH = os.getenv("CHROMA_DB_PATH", "./chroma_db")
-# _chroma_client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
-# For in-memory (good for quick testing, data is lost on restart):
 _chroma_client = chromadb.Client()
 
-print(f"ChromaDB Client: Initialized. Using {'in-memory' if not hasattr(_chroma_client, 'persist') else 'persistent'} client.")
-
+print(f"ChromaDB: Initialized {'in-memory' if not hasattr(_chroma_client, 'persist') else 'persistent'} client.")
 
 def get_chroma_collection(collection_name: str):
     """
@@ -31,9 +21,8 @@ def get_chroma_collection(collection_name: str):
     
     try:
         collection = _chroma_client.get_or_create_collection(name=collection_name)
-        print(f"ChromaDB Client: Accessed/Created collection '{collection_name}'.")
+        print(f"ChromaDB: Accessed/Created collection '{collection_name}'.")
         return collection
     except Exception as e:
-        print(f"ChromaDB Client: ERROR - Failed to get or create collection '{collection_name}': {e}")
+        print(f"ChromaDB: Failed to access collection '{collection_name}': {e}")
         raise
-

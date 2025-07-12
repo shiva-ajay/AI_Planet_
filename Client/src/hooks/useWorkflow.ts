@@ -1,14 +1,9 @@
-// src/hooks/useWorkflow.ts
-import { useCallback, useState } from 'react';
-import {
-  type Node,
-  type ReactFlowInstance,
-} from 'reactflow';
-import { useWorkflowStore } from '../store/workflowStore'; // Import from Zustand store
-import type { NodeData } from '../store/workflowStore';
+import { useCallback, useState } from "react";
+import { type Node, type ReactFlowInstance } from "reactflow";
+import { useWorkflowStore } from "../store/workflowStore";
+import type { NodeData } from "../store/workflowStore";
 
 export const useWorkflow = () => {
-  // Get all relevant state and actions from the Zustand store
   const {
     nodes,
     edges,
@@ -17,20 +12,24 @@ export const useWorkflow = () => {
     onConnect,
     draggedType,
     setDraggedType,
-    setNodes, // We'll need these setters to initialize nodes on drop
+    setNodes,
   } = useWorkflowStore();
 
-  const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null);
+  const [reactFlowInstance, setReactFlowInstance] =
+    useState<ReactFlowInstance | null>(null);
 
-  const onDragStart = useCallback((event: React.DragEvent, nodeType: string) => {
-    setDraggedType(nodeType);
-    event.dataTransfer.setData('application/reactflow', nodeType);
-    event.dataTransfer.effectAllowed = 'move';
-  }, [setDraggedType]);
+  const onDragStart = useCallback(
+    (event: React.DragEvent, nodeType: string) => {
+      setDraggedType(nodeType);
+      event.dataTransfer.setData("application/reactflow", nodeType);
+      event.dataTransfer.effectAllowed = "move";
+    },
+    [setDraggedType]
+  );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+    event.dataTransfer.dropEffect = "move";
   }, []);
 
   const onDrop = useCallback(
@@ -49,22 +48,26 @@ export const useWorkflow = () => {
         return;
       }
 
-      const newNode: Node<NodeData> = { // Specify NodeData type
+      const newNode: Node<NodeData> = {
         id: `${draggedType}-${Date.now()}`,
         type: draggedType,
         position,
-        data: { 
-          label: draggedType, 
+        data: {
+          label: draggedType,
           type: draggedType,
-          config: {}, // Initialize an empty config object for the node
+          config: {},
         },
       };
 
-      setNodes([
-        ...nodes,
-        newNode,
-      ]);
-      setTimeout(() => reactFlowInstance?.fitView({ nodes: [...nodes, newNode], duration: 500 }), 0);
+      setNodes([...nodes, newNode]);
+      setTimeout(
+        () =>
+          reactFlowInstance?.fitView({
+            nodes: [...nodes, newNode],
+            duration: 500,
+          }),
+        0
+      );
       setDraggedType(null);
     },
     [draggedType, reactFlowInstance, setNodes, setDraggedType]

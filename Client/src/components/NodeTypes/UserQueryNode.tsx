@@ -1,28 +1,38 @@
-import React, { useEffect, useState } from 'react';
-import { Handle, Position, type NodeProps } from 'reactflow';
-import { MessageSquare } from 'lucide-react';
-import { useWorkflowStore } from '../../store/workflowStore';
+import React, { useEffect, useState } from "react";
+import { Handle, Position, type NodeProps } from "reactflow";
+import { MessageSquare } from "lucide-react";
+import { useWorkflowStore } from "../../store/workflowStore";
 
 export interface NodeData {
   label: string;
-  name: string; // Added name field
+  name: string;
   type: string;
   config?: Record<string, unknown>;
 }
 
-export const UserQueryNode: React.FC<NodeProps<NodeData>> = ({ id, selected, data }) => {
+export const UserQueryNode: React.FC<NodeProps<NodeData>> = ({
+  id,
+  selected,
+  data,
+}) => {
   const updateNodeConfig = useWorkflowStore((state) => state.updateNodeConfig);
-  const [query, setQuery] = useState(data.config?.query || 'Write your query here');
-  
+  const [query, setQuery] = useState(
+    data.config?.query || "Write your query here"
+  );
+
   useEffect(() => {
     updateNodeConfig(id, {
       query: query,
-      name: data.name || 'UserQuery', // Ensure name is set
+      name: data.name || "UserQuery",
     });
   }, [query, id, updateNodeConfig, data.name]);
 
   return (
-    <div className={`bg-white rounded-lg border-2 p-4 min-w-[280px] ${selected ? 'border-blue-500' : 'border-gray-200'}`}>
+    <div
+      className={`bg-white rounded-lg border-2 p-4 min-w-[280px] ${
+        selected ? "border-blue-500" : "border-gray-200"
+      }`}
+    >
       <div className="flex items-center gap-2 mb-3">
         <MessageSquare className="w-4 h-4 text-gray-600" />
         <span className="font-medium text-sm">User Query</span>

@@ -1,20 +1,27 @@
-// src/NodeTypes/LLMEngineNode.tsx
-import React, { useState, useEffect } from 'react';
-import { Handle, Position, type NodeProps } from 'reactflow';
-import { Brain, Settings } from 'lucide-react';
-import type { NodeData } from '../../store/workflowStore';
-import { useWorkflowStore } from '../../store/workflowStore'; // Import useWorkflowStore and NodeData
+import React, { useState, useEffect } from "react";
+import { Handle, Position, type NodeProps } from "reactflow";
+import { Brain, Settings } from "lucide-react";
+import type { NodeData } from "../../store/workflowStore";
+import { useWorkflowStore } from "../../store/workflowStore";
 
-export const LLMNode: React.FC<NodeProps<NodeData>> = ({ id, selected, data }) => {
+export const LLMNode: React.FC<NodeProps<NodeData>> = ({
+  id,
+  selected,
+  data,
+}) => {
   const updateNodeConfig = useWorkflowStore((state) => state.updateNodeConfig);
 
-  const [model, setModel] = useState(data.config?.model || 'GPT 4o - Mini');
-  const [apiKey, setApiKey] = useState(data.config?.apiKey || '');
-  const [temperature, setTemperature] = useState(data.config?.temperature || '0.7');
-  const [webSearch, setWebSearch] = useState(data.config?.webSearchEnabled ?? true); // Default to true
-  const [serpApi, setSerpApi] = useState(data.config?.serpApiKey || '');
+  const [model, setModel] = useState(data.config?.model || "gemini-1.5-flash");
+  const [apiKey, setApiKey] = useState(data.config?.apiKey || "");
+  const [temperature, setTemperature] = useState(
+    data.config?.temperature || "0.7"
+  );
+  const [webSearch, setWebSearch] = useState(
+    data.config?.webSearchEnabled ?? true
+  );
+  const [serpApi, setSerpApi] = useState(data.config?.serpApiKey || "");
+  const [prompt, setPrompt] = useState(data.config?.prompt || "");
 
-  // Update store whenever local state changes
   useEffect(() => {
     updateNodeConfig(id, {
       model: model,
@@ -22,12 +29,55 @@ export const LLMNode: React.FC<NodeProps<NodeData>> = ({ id, selected, data }) =
       temperature: temperature,
       webSearchEnabled: webSearch,
       serpApiKey: serpApi,
+      prompt: prompt,
+      name: data.name || "LLMEngine",
     });
-  }, [model, apiKey, temperature, webSearch, serpApi, id, updateNodeConfig]);
+  }, [
+    model,
+    apiKey,
+    temperature,
+    webSearch,
+    serpApi,
+    prompt,
+    id,
+    updateNodeConfig,
+    data.name,
+  ]);
 
   return (
-    <div className={`bg-white rounded-lg border-2 p-4 min-w-[280px] ${selected ? 'border-blue-500' : 'border-gray-200'}`}>
-      <Handle type="target" position={Position.Left} className="w-3 h-3 bg-gray-400" />
+    <div
+      className={`bg-white rounded-lg border-2 p-4 min-w-[280px] ${
+        selected ? "border-blue-500" : "border-gray-200"
+      }`}
+    >
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="context"
+        className="w-4 h-4 bg-gray-400"
+        style={{
+          top: "59%",
+          position: "absolute",
+          width: "8px",
+          height: "8px",
+          backgroundColor: "#4FF02F",
+          border: "1px solid #64748b",
+        }}
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="query"
+        className="w-4 h-4 bg-blue-500"
+        style={{
+          top: "64%",
+          position: "absolute",
+          width: "8px",
+          height: "8px",
+          backgroundColor: "#4FF02F",
+          border: "1px solid #64748b",
+        }}
+      />
       <div className="flex items-center gap-2 mb-3">
         <Brain className="w-4 h-4 text-gray-600" />
         <span className="font-medium text-sm">LLM (OpenAI)</span>
@@ -35,17 +85,16 @@ export const LLMNode: React.FC<NodeProps<NodeData>> = ({ id, selected, data }) =
       </div>
       <div className="space-y-3">
         <div>
-          <label className="text-xs text-gray-600">Run a query with OpenAI LLM</label>
+          <label className="text-xs text-gray-600">Run a query with LLM</label>
         </div>
         <div>
           <label className="text-xs font-medium">Model</label>
-          <select 
-            value={model} 
+          <select
+            value={model}
             onChange={(e) => setModel(e.target.value)}
             className="w-full mt-1 p-2 border rounded text-sm"
           >
-            <option value="GPT 4o - Mini">GPT 4o - Mini</option>
-            {/* Add Gemini models if you want to support them */}
+            <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
             <option value="gemini-pro">Gemini Pro</option>
           </select>
         </div>
@@ -56,18 +105,29 @@ export const LLMNode: React.FC<NodeProps<NodeData>> = ({ id, selected, data }) =
             value={apiKey}
             onChange={(e) => setApiKey(e.target.value)}
             className="w-full mt-1 p-2 border rounded text-sm"
-            placeholder="••••••••••••••••••••"
+            placeholder="API Key"
           />
         </div>
         <div>
           <label className="text-xs font-medium">Prompt</label>
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            className="w-full mt-1 p-2 border rounded text-sm resize-y"
+            rows={3}
+            placeholder="Enter your prompt here..."
+          />
           <div className="mt-1 p-2 border rounded text-sm bg-gray-50">
             <div className="flex items-center gap-2 mb-2">
-              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">CONTEXT</span>
+              <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">
+                CONTEXT
+              </span>
               <span className="text-xs text-gray-600">(context)</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">User Query</span>
+              <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                User Query
+              </span>
               <span className="text-xs text-gray-600">(query)</span>
             </div>
           </div>
@@ -79,8 +139,12 @@ export const LLMNode: React.FC<NodeProps<NodeData>> = ({ id, selected, data }) =
             value={temperature}
             onChange={(e) => {
               const val = e.target.value;
-              // Basic validation for temperature (0 to 1)
-              if (val === '' || (parseFloat(val) >= 0 && parseFloat(val) <= 1 && !isNaN(parseFloat(val)))) {
+              if (
+                val === "" ||
+                (parseFloat(val) >= 0 &&
+                  parseFloat(val) <= 1 &&
+                  !isNaN(parseFloat(val)))
+              ) {
                 setTemperature(val);
               }
             }}
@@ -89,15 +153,18 @@ export const LLMNode: React.FC<NodeProps<NodeData>> = ({ id, selected, data }) =
         </div>
         <div className="flex items-center justify-between">
           <label className="text-xs font-medium">WebSearch Tool</label>
-          <label className="relative inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={webSearch}
-              onChange={(e) => setWebSearch(e.target.checked)}
-              className="sr-only peer"
-            />
-            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
-          </label>
+          <button
+            type="button"
+            aria-pressed={webSearch}
+            onClick={() => setWebSearch((prev) => !prev)}
+            className={`px-2 py-1 rounded text-xs font-medium transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              webSearch
+                ? "bg-green-500 text-white"
+                : "bg-gray-200 text-gray-600"
+            }`}
+          >
+            {webSearch ? "ON" : "OFF"}
+          </button>
         </div>
         <div>
           <label className="text-xs font-medium">SERP API</label>
@@ -110,7 +177,19 @@ export const LLMNode: React.FC<NodeProps<NodeData>> = ({ id, selected, data }) =
           />
         </div>
       </div>
-      <Handle type="source" position={Position.Right} className="w-3 h-3 bg-orange-500" />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="source"
+        className="w-4 h-4 bg-orange-500"
+        style={{
+          position: "absolute",
+          width: "8px",
+          height: "8px",
+          backgroundColor: "#F58421",
+          border: "1px solid #64748b",
+        }}
+      />
     </div>
   );
 };

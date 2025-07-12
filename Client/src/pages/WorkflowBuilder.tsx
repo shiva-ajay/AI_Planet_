@@ -20,6 +20,7 @@ import { Sidebar } from "../components/Layout/SideBar";
 import { Brain, Database, FileOutput, MessageSquare } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify"; // Import react-toastify
 import "react-toastify/dist/ReactToastify.css"; // Import toastify styles
+import Chatbot from "../components/Chat/Chatbot";
 
 const nodeTypes = {
   knowledgeBaseNode: KnowledgeBaseNode,
@@ -56,7 +57,7 @@ const WorkflowBuilderPage: React.FC = () => {
   const [reactFlowNodes, setReactFlowNodes] = useNodesState(nodes);
   const [reactFlowEdges, setReactFlowEdges] = useEdgesState(edges);
   const [isLoading, setIsLoading] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(true); // Chatbot auto-opens on page load
+  const [isChatOpen, setIsChatOpen] = useState(false); // Chatbot auto-opens on page load
 
   // Load workflow when selectedWorkflowId is set
   useEffect(() => {
@@ -348,6 +349,13 @@ const WorkflowBuilderPage: React.FC = () => {
           </div>
         </div>
       </div>
+      {isChatOpen && (
+        <Chatbot
+          isOpen={isChatOpen}
+          onClose={() => setIsChatOpen(false)}
+          workflowId={selectedWorkflowId}
+        />
+      )}
       <ToastContainer
         position="top-right"
         autoClose={3000}

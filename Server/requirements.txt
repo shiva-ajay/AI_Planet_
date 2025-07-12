@@ -9,4 +9,3 @@ supabase
 chromadb
 PyMuPDF
 
-#pip install -r requirements.txt

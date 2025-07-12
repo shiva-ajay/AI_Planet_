@@ -4,9 +4,8 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import GenAIStackPage from "./pages/GenAIStackPage";
 import WorkflowBuilder from "./pages/WorkflowBuilder";
-import 'reactflow/dist/style.css';
+import "reactflow/dist/style.css";
 import { ReactFlowProvider } from "reactflow";
-
 
 function App() {
   return (
@@ -15,13 +14,17 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/stack-management" element={<GenAIStackPage />} />
-  <Route path="/workflow-builder" element={
-          <ReactFlowProvider>
-            <WorkflowBuilder />
-          </ReactFlowProvider>
-        } />
-        {/* You might also want to catch invalid routes */}
-        <Route path="*" element={<div>404 Not Found</div>} />        </Routes>
+          <Route
+            path="/workflow-builder"
+            element={
+              <ReactFlowProvider>
+                <WorkflowBuilder />
+              </ReactFlowProvider>
+            }
+          />
+          {/* You might also want to catch invalid routes */}
+          <Route path="*" element={<div>404 Not Found</div>} />{" "}
+        </Routes>
       </Router>
       <ToastContainer
         position="top-right"

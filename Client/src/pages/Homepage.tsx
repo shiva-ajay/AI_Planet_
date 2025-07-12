@@ -1,38 +1,67 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-
+import React from "react";
+import { useNavigate } from "react-router-dom";
 
 const HomePage: React.FC = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#115e59] to-[#0f766e] text-white font-sans">      {/* Header */}
+    <div className="min-h-screen bg-gradient-to-b from-[#115e59] to-[#0f766e] text-white font-sans">
       <header className="flex items-center justify-between px-8 py-4">
         <div className="flex items-center space-x-2">
-          <img 
-            src="https://framerusercontent.com/images/pFpeWgK03UT38AQl5d988Epcsc.svg?scale-down-to=512" 
-            alt="AI Planet Logo" 
+          <img
+            src="https://framerusercontent.com/images/pFpeWgK03UT38AQl5d988Epcsc.svg?scale-down-to=512"
+            alt="AI Planet Logo"
             className="h-8 w-auto"
           />
         </div>
-        
+
         <nav className="flex items-center space-x-8">
           <div className="flex items-center space-x-1">
             <span className="text-white">Products</span>
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </div>
           <div className="flex items-center space-x-1">
             <span className="text-white">Models</span>
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </div>
           <div className="flex items-center space-x-1">
             <span className="text-white">Solutions</span>
-            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            <svg
+              className="w-4 h-4 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </div>
           <span className="text-white">Community</span>
@@ -51,15 +80,16 @@ const HomePage: React.FC = () => {
           <h2 className="text-6xl font-bold mb-8 leading-tight">
             in minutes, not months.
           </h2>
-          
+
           <p className="text-xl text-gray-300 mb-12 max-w-2xl mx-auto">
-            Integrate reliable, private and secure GenAI solutions within your enterprise environment
+            Integrate reliable, private and secure GenAI solutions within your
+            enterprise environment
           </p>
-          
+
           <div className="flex items-center justify-center space-x-4 mb-16">
-             <button
+            <button
               className="bg-white text-gray-900 px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors"
-              onClick={() => navigate('/stack-management')}
+              onClick={() => navigate("/stack-management")}
             >
               Get Started
             </button>
