@@ -1,6 +1,5 @@
 
 import chromadb
-import os
 
 _chroma_client = chromadb.Client()
 

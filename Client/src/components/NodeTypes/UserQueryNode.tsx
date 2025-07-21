@@ -4,7 +4,6 @@ import { MessageSquare } from "lucide-react";
 import { useWorkflowStore } from "../../store/workflowStore";
 
 export interface NodeData {
-  label: string;
   name: string;
   type: string;
   config?: Record<string, unknown>;

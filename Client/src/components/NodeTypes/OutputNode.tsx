@@ -3,9 +3,6 @@ import { Handle, Position, type NodeProps } from "reactflow";
 import { FileOutput, Settings } from "lucide-react";
 
 export interface NodeData {
-  label: string;
-  name: string;
-  type: string;
   config?: Record<string, unknown>;
 }
 

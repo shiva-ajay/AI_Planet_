@@ -63,8 +63,10 @@ const GenAIStackPage: React.FC = () => {
           setSelectedWorkflowId(newWorkflowId);
           
           // Refetch workflows to get the updated list
-          await fetchWorkflows();
+          navigate("/workflow-builder");
           toast.success("Workflow created successfully!");
+                    navigate("/workflow-builder");
+
         } else {
           // createWorkflow returned null/undefined, but check if it was created anyway
           await checkIfWorkflowWasCreated(initialWorkflowCount);
@@ -108,6 +110,7 @@ const GenAIStackPage: React.FC = () => {
         }
         
         toast.success("Workflow created successfully!");
+        navigate("/workflow-builder");
       } else {
         // Workflow was not created
         toast.error("Failed to create workflow. Please try again.");

@@ -1,7 +1,6 @@
 
 import google.generativeai as genai
-from typing import List, Dict, Any
-import os
+from typing import List
 
 def _configure_gemini(api_key: str):
     """
