@@ -13,9 +13,9 @@ function App() {
       <Router>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/stack-management" element={<GenAIStackPage />} />
+          <Route path="/workflows/create-workflow" element={<GenAIStackPage />} />
           <Route
-            path="/workflow-builder"
+            path="/workflows/:workflowId/edit"
             element={
               <ReactFlowProvider>
                 <WorkflowBuilder />

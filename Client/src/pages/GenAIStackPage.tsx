@@ -45,35 +45,32 @@ const GenAIStackPage: React.FC = () => {
   const handleCreateStack = async () => {
     if (formData.name.trim() && formData.description.trim()) {
       setLoading(true);
-      
+
       // Store the current workflow count before creation
       const initialWorkflowCount = stacks.length;
-      
+
       try {
         const newWorkflowId = await createWorkflow(
           formData.name,
           formData.description
         );
-        
+
         if (newWorkflowId) {
           // Success case - workflow created successfully
           setFormData({ name: "", description: "" });
           setIsModalOpen(false);
           resetWorkflowBuilder();
-          setSelectedWorkflowId(newWorkflowId);
-          
-          // Refetch workflows to get the updated list
-          navigate("/workflow-builder");
+          setSelectedWorkflowId(newWorkflowId); // Set in store
+          // Navigate to the new URL format
+          navigate(`/workflows/${newWorkflowId}/edit`);
           toast.success("Workflow created successfully!");
-                    navigate("/workflow-builder");
-
         } else {
           // createWorkflow returned null/undefined, but check if it was created anyway
           await checkIfWorkflowWasCreated(initialWorkflowCount);
         }
       } catch (err) {
         console.error("Error creating workflow:", err);
-        
+
         // Check if workflow was created despite the error
         await checkIfWorkflowWasCreated(initialWorkflowCount);
       } finally {
@@ -88,29 +85,31 @@ const GenAIStackPage: React.FC = () => {
     try {
       // Wait a bit for the database to update
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       const response = await axios.get<Stack[]>(`${API_BASE_URL}/list`);
       const updatedStacks = response.data;
-      
+
       // Check if a new workflow was added by looking for one with matching name and description
       const newWorkflow = updatedStacks.find(
-        stack => stack.name.trim() === formData.name.trim() && 
+        stack => stack.name.trim() === formData.name.trim() &&
                  stack.description.trim() === formData.description.trim()
       );
-      
+
       if (newWorkflow || updatedStacks.length > initialCount) {
         // Workflow was created in DB despite the error
         setStacks(updatedStacks);
         setFormData({ name: "", description: "" });
         setIsModalOpen(false);
         resetWorkflowBuilder();
-        
+
         if (newWorkflow) {
-          setSelectedWorkflowId(newWorkflow.id);
+          setSelectedWorkflowId(newWorkflow.id); // Set in store
+          navigate(`/workflows/${newWorkflow.id}/edit`);
+        } else {
+          navigate("/workflow-builder"); // Fallback
         }
-        
+
         toast.success("Workflow created successfully!");
-        navigate("/workflow-builder");
       } else {
         // Workflow was not created
         toast.error("Failed to create workflow. Please try again.");
@@ -123,7 +122,7 @@ const GenAIStackPage: React.FC = () => {
 
   const handleEditStack = async (stackId: string) => {
     resetWorkflowBuilder();
-    setSelectedWorkflowId(stackId);
+    setSelectedWorkflowId(stackId); 
     setLoading(true);
 
     try {
@@ -142,7 +141,8 @@ const GenAIStackPage: React.FC = () => {
       if (workflowData.config)
         useWorkflowStore.getState().setWorkflowConfig(workflowData.config);
 
-      navigate("/workflow-builder");
+      // Navigate to the new URL format
+      navigate(`/workflows/${stackId}/edit`);
     } catch (err) {
       console.error(`Error fetching workflow with ID ${stackId}:`, err);
       toast.error("Failed to load workflow. Please try again.");

@@ -18,9 +18,10 @@ import { UserQueryNode } from "../components/NodeTypes/UserQueryNode";
 import { Header } from "../components/Layout/Header";
 import { Sidebar } from "../components/Layout/SideBar";
 import { Brain, Database, FileOutput, MessageSquare } from "lucide-react";
-import { ToastContainer, toast } from "react-toastify"; 
-import "react-toastify/dist/ReactToastify.css"; 
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import Chatbot from "../components/Chat/Chatbot";
+import { useParams } from "react-router-dom"; // Import useParams
 
 const nodeTypes = {
   knowledgeBaseNode: KnowledgeBaseNode,
@@ -37,8 +38,11 @@ const componentTypes = [
 ];
 
 const WorkflowBuilderPage: React.FC = () => {
+  // Use useParams to get the workflowId from the URL
+  const { workflowId } = useParams<{ workflowId: string }>();
+
   const {
-    selectedWorkflowId,
+    selectedWorkflowId, // Still useful for internal state management
     nodes,
     edges,
     onNodesChange,
@@ -50,18 +54,29 @@ const WorkflowBuilderPage: React.FC = () => {
     removeNode,
     removeEdge,
     loadWorkflow,
+    setSelectedWorkflowId // Import setSelectedWorkflowId to update the store
   } = useWorkflowStore();
 
   const { screenToFlowPosition } = useReactFlow();
   const [reactFlowNodes, setReactFlowNodes] = useNodesState(nodes);
   const [reactFlowEdges, setReactFlowEdges] = useEdgesState(edges);
   const [isLoading, setIsLoading] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false); // Chatbot auto-opens on page load
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
-  // Load workflow when selectedWorkflowId is set
+  // Set selectedWorkflowId in store when URL parameter changes
+  useEffect(() => {
+    if (workflowId && workflowId !== selectedWorkflowId) {
+      setSelectedWorkflowId(workflowId);
+    }
+  }, [workflowId, selectedWorkflowId, setSelectedWorkflowId]);
+
+
+  // Load workflow when selectedWorkflowId is set (now primarily from URL)
   useEffect(() => {
     const fetchWorkflow = async () => {
-      if (selectedWorkflowId) {
+      // Only load if a workflowId is selected AND the nodes/edges are currently empty.
+      // This prevents re-loading a newly created workflow whose data is already in the store.
+      if (selectedWorkflowId && (nodes.length === 0 || edges.length === 0)) {
         setIsLoading(true);
         try {
           const success = await loadWorkflow(selectedWorkflowId);
@@ -73,10 +88,12 @@ const WorkflowBuilderPage: React.FC = () => {
         } finally {
           setIsLoading(false);
         }
+      } else if (selectedWorkflowId && nodes.length > 0 && edges.length > 0) {
+        setIsLoading(false);
       }
     };
     fetchWorkflow();
-  }, [selectedWorkflowId, loadWorkflow]);
+  }, [selectedWorkflowId, loadWorkflow, nodes.length, edges.length]); // Add nodes.length, edges.length to dependencies
 
   useEffect(() => {
     setReactFlowNodes(nodes);
@@ -226,20 +243,36 @@ const WorkflowBuilderPage: React.FC = () => {
 
   // Run workflow and show output in OutputNode
   const handleRunWorkflow = async () => {
-    if (!selectedWorkflowId) return;
+    // Use workflowId from useParams, which is now the source of truth
+    if (!workflowId) {
+      toast.error("No workflow ID found in URL to run.");
+      return;
+    }
+
     try {
       // Find the UserQuery node and get its query value
       const userQueryNode = nodes.find((node) => node.type === "userQueryNode");
       const userQuery = userQueryNode?.data?.config?.query || "";
 
-      const response = await fetch("http://127.0.0.1:8000/api/execute", {
+  
+      const userId = "anonymous_user_" + Math.random().toString(36).substr(2, 9);
+
+
+      const response = await fetch("http://127.0.0.1:8000/api/run/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          workflow_id: selectedWorkflowId,
+          workflow_id: workflowId, // Use workflowId from URL
           user_query: userQuery,
+          user_id: userId, // Pass the user ID
         }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to execute workflow");
+      }
+
       const data = await response.json();
       const finalResponse =
         data?.workflow_response?.final_response || "No response.";
@@ -254,12 +287,14 @@ const WorkflowBuilderPage: React.FC = () => {
         });
       }
       toast.success("Workflow executed successfully");
-    } catch (e) {
-      toast.error("Error running workflow");
+    } catch (e: any) { // Catch as any to handle both Error and other types
+      console.error("Error running workflow:", e);
+      toast.error(e.message || "Error running workflow");
     }
   };
 
-  if (!selectedWorkflowId) {
+  // Check workflowId from URL directly
+  if (!workflowId) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
         <p className="text-xl text-gray-700">
@@ -353,7 +388,7 @@ const WorkflowBuilderPage: React.FC = () => {
         <Chatbot
           isOpen={isChatOpen}
           onClose={() => setIsChatOpen(false)}
-          workflowId={selectedWorkflowId}
+          workflowId={selectedWorkflowId || workflowId} // Pass workflowId from URL or store
         />
       )}
       <ToastContainer
