@@ -89,7 +89,7 @@ const HomePage: React.FC = () => {
           <div className="flex items-center justify-center space-x-4 mb-16">
             <button
               className="bg-white text-gray-900 px-6 py-3 rounded-lg font-medium hover:bg-gray-100 transition-colors"
-              onClick={() => navigate("/stack-management")}
+              onClick={() => navigate("/workflows/create-workflow")}
             >
               Get Started
             </button>

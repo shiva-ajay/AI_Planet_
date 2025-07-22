@@ -5,7 +5,7 @@ import type {
   OnEdgesChange,
   OnNodesChange,
   OnConnect,
-  Connection, // Import Connection type
+  Connection,
 } from "reactflow";
 import { applyNodeChanges, applyEdgeChanges, addEdge } from "reactflow";
 import axios from "axios";
@@ -25,6 +25,7 @@ export interface NodeData {
     uploadedFile?: File | null;
     uploadedFileName?: string | null;
     query?: string;
+    output?: string;
   };
   workflowId?: string;
 }
@@ -51,6 +52,8 @@ interface WorkflowState {
   setSelectedWorkflowId: (id: string | null) => void;
   setNodes: (nodes: Node<NodeData>[]) => void;
   setEdges: (edges: Edge[]) => void;
+  setWorkflowName: (name: string) => void;
+  setWorkflowDescription: (description: string) => void;
   draggedType: string | null;
   setDraggedType: (type: string | null) => void;
   resetWorkflowBuilder: () => void;
@@ -62,7 +65,6 @@ interface WorkflowState {
     nodeId: string,
     config: Partial<NodeData["config"]>
   ) => void;
-  createWorkflow: (name: string, description: string) => Promise<string | null>;
   saveWorkflow: () => Promise<boolean>;
   loadWorkflow: (workflowId: string) => Promise<boolean>;
   setWorkflowConfig: (config: WorkflowOverallConfig) => void;
@@ -82,6 +84,8 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
   setSelectedWorkflowId: (id) => set({ selectedWorkflowId: id }),
   setNodes: (nodes) => set({ nodes }),
   setEdges: (edges) => set({ edges }),
+  setWorkflowName: (name) => set({ workflowName: name }),
+  setWorkflowDescription: (description) => set({ workflowDescription: description }),
   setDraggedType: (type) => set({ draggedType: type }),
   setWorkflowConfig: (config) => set({ workflowConfig: config }),
 
@@ -202,35 +206,6 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     });
   },
 
-  createWorkflow: async (name, description) => {
-    const newId = uuidv4();
-    try {
-      const response = await axios.post(`${API_BASE_URL}/create`, {
-        id: newId,
-        name: name,
-        description: description,
-        nodes: "[]",
-        edges: "[]",
-        config: "{}",
-      });
-      if (response.status === 201) {
-        set({
-          selectedWorkflowId: newId,
-          workflowName: name,
-          workflowDescription: description,
-          nodes: [],
-          edges: [],
-          workflowConfig: {},
-        });
-        return newId;
-      }
-      return null;
-    } catch (error) {
-      console.error("Error creating workflow:", error);
-      return null;
-    }
-  },
-
   saveWorkflow: async () => {
     const state = get();
     if (!state.selectedWorkflowId) {
@@ -238,7 +213,6 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       return false;
     }
 
-    // Format nodes with names
     const formattedNodes = state.nodes.map((node) => ({
       id: node.id,
       name: node.data.name || getNodeName(node.data.type),
@@ -246,21 +220,19 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       position: node.position,
       config: {
         ...node.data.config,
-        uploadedFile: undefined, // Exclude file from JSON
+        uploadedFile: undefined,
       },
     }));
 
-    // Format edges
     const formattedEdges = state.edges.map((edge) => ({
       id: edge.id,
       source: edge.source,
       target: edge.target,
       sourceHandle: edge.sourceHandle,
       targetHandle: edge.targetHandle,
-      data: edge.data, // assuming edge.data already has the name
+      data: edge.data,
     }));
 
-    // Prepare FormData
     const formData = new FormData();
     formData.append("name", state.workflowName);
     formData.append("description", state.workflowDescription);
@@ -268,7 +240,6 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     formData.append("edges", JSON.stringify(formattedEdges));
     formData.append("config", JSON.stringify(state.workflowConfig));
 
-    // Handle file upload from KnowledgeBaseNode
     let fileToUpload: File | null = null;
     let documentName: string | null = null;
 
@@ -311,25 +282,22 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         "Error saving workflow:",
         error.response ? error.response.data : error.message
       );
-      alert(
-        `Error saving workflow: ${
-          error.response?.data?.detail || error.message
-        }`
-      );
       return false;
     }
   },
 
   loadWorkflow: async (workflowId: string) => {
     try {
+      if (workflowId.startsWith('temp_') && get().nodes.length > 0) {
+        return true;
+      }
+
       const response = await axios.get(`${API_BASE_URL}/${workflowId}`);
-      console.log("Raw backend response:", response.data); // Log raw response for debugging
       if (response.status === 200) {
         const { name, description, nodes, edges, config } = response.data;
 
-        // Parse nodes (handle string, array, and null cases)
         let parsedNodes: any[] = [];
-        if (typeof nodes === "string" && nodes !== "null") {
+        if (typeof nodes === "string" && nodes !== "null" && nodes !== "[]") {
           try {
             parsedNodes = JSON.parse(nodes);
           } catch (e) {
@@ -338,32 +306,32 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           }
         } else if (Array.isArray(nodes)) {
           parsedNodes = nodes;
-        } else if (nodes === null) {
-          parsedNodes = []; // Treat null as an empty array
+        } else if (nodes === null || nodes === "null" || nodes === "[]") {
+          parsedNodes = [];
         } else {
-          console.error("Nodes is neither a string, array, nor null:", nodes);
+          console.error("Nodes data format unexpected:", nodes);
           return false;
         }
 
         const formattedNodes = parsedNodes.map((node: any) => ({
           id: node.id,
           type: node.type,
-          position: node.position || { x: 0, y: 0 }, // Fallback position
+          position: node.position || { x: 0, y: 0 },
           data: {
             label: node.name || getNodeName(node.type),
             name: node.name || getNodeName(node.type),
             type: node.type,
+            // Ensure config is always an object, even if node.config is null/undefined
             config: {
-              ...node.config,
-              uploadedFile: null, // Files are not included in JSON
+              ...(node.config || {}), // Safely spread node.config or an empty object
+              uploadedFile: null,
             },
             workflowId: workflowId,
           },
         }));
 
-        // Parse edges (handle string, array, and null cases)
         let parsedEdges: any[] = [];
-        if (typeof edges === "string" && edges !== "null") {
+        if (typeof edges === "string" && edges !== "null" && edges !== "[]") {
           try {
             parsedEdges = JSON.parse(edges);
           } catch (e) {
@@ -372,10 +340,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           }
         } else if (Array.isArray(edges)) {
           parsedEdges = edges;
-        } else if (edges === null) {
-          parsedEdges = []; // Treat null as an empty array
+        } else if (edges === null || edges === "null" || edges === "[]") {
+          parsedEdges = [];
         } else {
-          console.error("Edges is neither a string, array, nor null:", edges);
+          console.error("Edges data format unexpected:", edges);
           return false;
         }
 
@@ -385,12 +353,11 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           sourceHandle: edge.sourceHandle || null,
           target: edge.target,
           targetHandle: edge.targetHandle || null,
-          data: { name: edge.data?.name || "Unknown" }, // Access data.name
+          data: { name: edge.data?.name || "Unknown" },
         }));
 
-        // Parse config (handle string, object, and null cases)
         let parsedConfig: WorkflowOverallConfig = {};
-        if (typeof config === "string" && config !== "null") {
+        if (typeof config === "string" && config !== "null" && config !== "{}") {
           try {
             parsedConfig = JSON.parse(config);
           } catch (e) {
@@ -399,13 +366,10 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
           }
         } else if (typeof config === "object" && config !== null) {
           parsedConfig = config;
-        } else if (config === null) {
-          parsedConfig = {}; // Treat null as an empty object
+        } else if (config === null || config === "null" || config === "{}") {
+          parsedConfig = {};
         } else {
-          console.error(
-            "Config is neither a string, object, nor null:",
-            config
-          );
+          console.error("Config data format unexpected:", config);
           return false;
         }
 
@@ -425,17 +389,11 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
         "Error loading workflow:",
         error.response ? error.response.data : error.message
       );
-      alert(
-        `Error loading workflow: ${
-          error.response?.data?.detail || error.message
-        }`
-      );
       return false;
     }
   },
 }));
 
-// Helper function to assign predefined node names
 function getNodeName(type: string): string {
   switch (type) {
     case "userQueryNode":
@@ -451,7 +409,6 @@ function getNodeName(type: string): string {
   }
 }
 
-// Helper function to determine edge name based on connection points
 function determineEdgeName(
   connection: Connection,
   nodes: Node<NodeData>[]
@@ -462,11 +419,9 @@ function determineEdgeName(
 
   if (!sourceNode || !targetNode) return "Unknown";
 
-  // UserQueryNode output
   if (sourceNode.data.type === "userQueryNode" && sourceHandle === "source") {
     return "Query";
   }
-  // KnowledgeBaseNode input/output
   if (
     targetNode.data.type === "knowledgeBaseNode" &&
     targetHandle === "target"
@@ -479,7 +434,6 @@ function determineEdgeName(
   ) {
     return "Context";
   }
-  // LLMNode inputs/output
   if (targetNode.data.type === "llmNode" && targetHandle === "context") {
     return "Context";
   }
@@ -489,7 +443,6 @@ function determineEdgeName(
   if (sourceNode.data.type === "llmNode" && sourceHandle === "source") {
     return "Answer";
   }
-  // OutputNode input
   if (targetNode.data.type === "outputNode" && targetHandle === "target") {
     return "Answer";
   }

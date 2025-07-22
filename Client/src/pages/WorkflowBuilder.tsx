@@ -10,7 +10,7 @@ import ReactFlow, {
 } from "reactflow";
 import type { Connection } from "reactflow";
 import "reactflow/dist/style.css";
-import { useWorkflowStore } from "../store/workflowStore";
+import { useWorkflowStore, type NodeData } from "../store/workflowStore";
 import { KnowledgeBaseNode } from "../components/NodeTypes/KnowledgeBaseNode";
 import { LLMNode } from "../components/NodeTypes/LLMEngineNode";
 import { OutputNode } from "../components/NodeTypes/OutputNode";
@@ -21,7 +21,59 @@ import { Brain, Database, FileOutput, MessageSquare } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Chatbot from "../components/Chat/Chatbot";
-import { useParams } from "react-router-dom"; // Import useParams
+import { useParams } from "react-router-dom";
+
+// Define a simple ErrorBoundary component
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: React.ErrorInfo | null;
+}
+
+class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error: error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error("Uncaught error in component:", error, errorInfo);
+    this.setState({ errorInfo: errorInfo });
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full p-4 bg-red-50 rounded-lg shadow-md">
+          <h2 className="text-xl font-bold text-red-700 mb-2">Something went wrong.</h2>
+          <p className="text-red-600 text-center mb-4">
+            We're sorry for the inconvenience. Please try refreshing the page.
+          </p>
+          {this.state.error && (
+            <details className="text-sm text-red-500 bg-red-100 p-3 rounded-md overflow-auto max-h-40 w-full">
+              <summary>Error Details</summary>
+              <pre className="whitespace-pre-wrap break-words">
+                {this.state.error.toString()}
+                <br />
+                {this.state.errorInfo?.componentStack}
+              </pre>
+            </details>
+          )}
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
 
 const nodeTypes = {
   knowledgeBaseNode: KnowledgeBaseNode,
@@ -38,11 +90,10 @@ const componentTypes = [
 ];
 
 const WorkflowBuilderPage: React.FC = () => {
-  // Use useParams to get the workflowId from the URL
   const { workflowId } = useParams<{ workflowId: string }>();
 
   const {
-    selectedWorkflowId, // Still useful for internal state management
+    selectedWorkflowId,
     nodes,
     edges,
     onNodesChange,
@@ -54,7 +105,9 @@ const WorkflowBuilderPage: React.FC = () => {
     removeNode,
     removeEdge,
     loadWorkflow,
-    setSelectedWorkflowId // Import setSelectedWorkflowId to update the store
+    setSelectedWorkflowId,
+    workflowName,
+    workflowDescription,
   } = useWorkflowStore();
 
   const { screenToFlowPosition } = useReactFlow();
@@ -63,23 +116,28 @@ const WorkflowBuilderPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  // Set selectedWorkflowId in store when URL parameter changes
   useEffect(() => {
     if (workflowId && workflowId !== selectedWorkflowId) {
       setSelectedWorkflowId(workflowId);
     }
   }, [workflowId, selectedWorkflowId, setSelectedWorkflowId]);
 
-
-  // Load workflow when selectedWorkflowId is set (now primarily from URL)
   useEffect(() => {
     const fetchWorkflow = async () => {
-      // Only load if a workflowId is selected AND the nodes/edges are currently empty.
-      // This prevents re-loading a newly created workflow whose data is already in the store.
-      if (selectedWorkflowId && (nodes.length === 0 || edges.length === 0)) {
+      if (workflowId) {
+        if (workflowId.startsWith('temp_') && nodes.length > 0) {
+          setIsLoading(false);
+          return;
+        }
+
+        if (selectedWorkflowId === workflowId && nodes.length > 0) {
+          setIsLoading(false);
+          return;
+        }
+
         setIsLoading(true);
         try {
-          const success = await loadWorkflow(selectedWorkflowId);
+          const success = await loadWorkflow(workflowId);
           if (!success) {
             toast.error("Failed to load workflow");
           }
@@ -88,12 +146,10 @@ const WorkflowBuilderPage: React.FC = () => {
         } finally {
           setIsLoading(false);
         }
-      } else if (selectedWorkflowId && nodes.length > 0 && edges.length > 0) {
-        setIsLoading(false);
       }
     };
     fetchWorkflow();
-  }, [selectedWorkflowId, loadWorkflow, nodes.length, edges.length]); // Add nodes.length, edges.length to dependencies
+  }, [workflowId, selectedWorkflowId, loadWorkflow, nodes.length]);
 
   useEffect(() => {
     setReactFlowNodes(nodes);
@@ -177,16 +233,20 @@ const WorkflowBuilderPage: React.FC = () => {
           y: event.clientY - reactFlowBounds.top,
         });
 
-        const defaultNodeData: Record<string, unknown> = {
+        // Initialize config as an empty object first, then merge specific properties
+        const defaultNodeData: NodeData = {
           label: `${type} Node`,
           name: getNodeName(type),
           type: type,
-          config: {},
+          config: {}, // Always initialize config as an empty object
+          workflowId: workflowId,
         };
+
         if (type === "llmNode") {
           defaultNodeData.label = "LLM Node";
           defaultNodeData.name = "LLMEngine";
-          defaultNodeData.config = {
+          defaultNodeData.config = { // Merge specific config properties
+            ...defaultNodeData.config,
             model: "gemini-1.5-flash",
             apiKey: "",
             temperature: "0.7",
@@ -196,7 +256,8 @@ const WorkflowBuilderPage: React.FC = () => {
         } else if (type === "knowledgeBaseNode") {
           defaultNodeData.label = "Knowledge Base Node";
           defaultNodeData.name = "KnowledgeBase";
-          defaultNodeData.config = {
+          defaultNodeData.config = { // Merge specific config properties
+            ...defaultNodeData.config,
             embeddingModel: "text-embedding-3-large",
             apiKey: "",
             uploadedFileName: "",
@@ -205,11 +266,17 @@ const WorkflowBuilderPage: React.FC = () => {
         } else if (type === "userQueryNode") {
           defaultNodeData.label = "User Query Node";
           defaultNodeData.name = "UserQuery";
-          defaultNodeData.config = { query: "Write your query here" };
+          defaultNodeData.config = { // Merge specific config properties
+            ...defaultNodeData.config,
+            query: "Write your query here"
+          };
         } else if (type === "outputNode") {
           defaultNodeData.label = "Output Node";
           defaultNodeData.name = "Output";
-          defaultNodeData.config = {};
+          defaultNodeData.config = { // Merge specific config properties
+            ...defaultNodeData.config,
+            output: "Workflow output will appear here."
+          };
         }
 
         const newNode = {
@@ -223,7 +290,7 @@ const WorkflowBuilderPage: React.FC = () => {
         setDraggedType(null);
       }
     },
-    [screenToFlowPosition, draggedType, addNode, setDraggedType]
+    [screenToFlowPosition, draggedType, addNode, setDraggedType, workflowId]
   );
 
   const getNodeName = (type: string): string => {
@@ -241,30 +308,25 @@ const WorkflowBuilderPage: React.FC = () => {
     }
   };
 
-  // Run workflow and show output in OutputNode
   const handleRunWorkflow = async () => {
-    // Use workflowId from useParams, which is now the source of truth
     if (!workflowId) {
       toast.error("No workflow ID found in URL to run.");
       return;
     }
 
     try {
-      // Find the UserQuery node and get its query value
       const userQueryNode = nodes.find((node) => node.type === "userQueryNode");
       const userQuery = userQueryNode?.data?.config?.query || "";
 
-  
       const userId = "anonymous_user_" + Math.random().toString(36).substr(2, 9);
-
 
       const response = await fetch("http://127.0.0.1:8000/api/run/execute", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          workflow_id: workflowId, // Use workflowId from URL
+          workflow_id: workflowId,
           user_query: userQuery,
-          user_id: userId, // Pass the user ID
+          user_id: userId,
         }),
       });
 
@@ -277,23 +339,20 @@ const WorkflowBuilderPage: React.FC = () => {
       const finalResponse =
         data?.workflow_response?.final_response || "No response.";
 
-      // Update OutputNode config with the final response
       const outputNode = nodes.find((node) => node.type === "outputNode");
       if (outputNode) {
-        // Use Zustand store action to update node config
         const updateNodeConfig = useWorkflowStore.getState().updateNodeConfig;
         updateNodeConfig(outputNode.id, {
           output: finalResponse,
         });
       }
       toast.success("Workflow executed successfully");
-    } catch (e: any) { // Catch as any to handle both Error and other types
+    } catch (e: any) {
       console.error("Error running workflow:", e);
       toast.error(e.message || "Error running workflow");
     }
   };
 
-  // Check workflowId from URL directly
   if (!workflowId) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100">
@@ -314,7 +373,7 @@ const WorkflowBuilderPage: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen">
-      <Header />
+      <Header workflowName={workflowName} workflowDescription={workflowDescription} />
       <div className="flex flex-grow overflow-hidden relative">
         <Sidebar componentTypes={componentTypes} onDragStart={onDragStart} />
         <div
@@ -322,22 +381,24 @@ const WorkflowBuilderPage: React.FC = () => {
           onDrop={onDrop}
           onDragOver={onDragOver}
         >
-          <ReactFlow
-            nodes={reactFlowNodes}
-            edges={reactFlowEdges}
-            onNodesChange={handleNodesChange}
-            onEdgesChange={handleEdgesChange}
-            onConnect={handleConnect}
-            nodeTypes={nodeTypes}
-            fitView
-          >
-            <MiniMap
-              className="!absolute !top-4 !right-4 !z-20 shadow-lg rounded"
-              style={{ width: 180, height: 120 }}
-            />
-            <Controls />
-            <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-          </ReactFlow>
+          <ErrorBoundary>
+            <ReactFlow
+              nodes={reactFlowNodes}
+              edges={reactFlowEdges}
+              onNodesChange={handleNodesChange}
+              onEdgesChange={handleEdgesChange}
+              onConnect={handleConnect}
+              nodeTypes={nodeTypes}
+              fitView
+            >
+              <MiniMap
+                className="!absolute !top-4 !right-4 !z-20 shadow-lg rounded"
+                style={{ width: 180, height: 120 }}
+              />
+              <Controls />
+              <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+            </ReactFlow>
+          </ErrorBoundary>
           <div className="fixed bottom-4 right-4 flex flex-col space-y-2 z-10">
             <button
               onClick={handleRunWorkflow}
@@ -388,7 +449,7 @@ const WorkflowBuilderPage: React.FC = () => {
         <Chatbot
           isOpen={isChatOpen}
           onClose={() => setIsChatOpen(false)}
-          workflowId={selectedWorkflowId || workflowId} // Pass workflowId from URL or store
+          workflowId={selectedWorkflowId || workflowId}
         />
       )}
       <ToastContainer

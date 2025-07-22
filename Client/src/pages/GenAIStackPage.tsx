@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { v4 as uuidv4 } from "uuid"; // Import uuid for temporary ID generation
 
 interface Stack {
   id: string;
@@ -18,10 +19,14 @@ const GenAIStackPage: React.FC = () => {
   const [stacks, setStacks] = useState<Stack[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [formData, setFormData] = useState({ name: "", description: "" });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // For initial fetch, not for optimistic creation button
 
-  const { createWorkflow, resetWorkflowBuilder, setSelectedWorkflowId } =
-    useWorkflowStore();
+  const {
+    resetWorkflowBuilder,
+    setSelectedWorkflowId,
+    setWorkflowName, // Now available from store
+    setWorkflowDescription, // Now available from store
+  } = useWorkflowStore();
 
   const navigate = useNavigate();
 
@@ -42,106 +47,100 @@ const GenAIStackPage: React.FC = () => {
     }
   };
 
-  const handleCreateStack = async () => {
-    if (formData.name.trim() && formData.description.trim()) {
-      setLoading(true);
-
-      // Store the current workflow count before creation
-      const initialWorkflowCount = stacks.length;
-
-      try {
-        const newWorkflowId = await createWorkflow(
-          formData.name,
-          formData.description
-        );
-
-        if (newWorkflowId) {
-          // Success case - workflow created successfully
-          setFormData({ name: "", description: "" });
-          setIsModalOpen(false);
-          resetWorkflowBuilder();
-          setSelectedWorkflowId(newWorkflowId); // Set in store
-          // Navigate to the new URL format
-          navigate(`/workflows/${newWorkflowId}/edit`);
-          toast.success("Workflow created successfully!");
-        } else {
-          // createWorkflow returned null/undefined, but check if it was created anyway
-          await checkIfWorkflowWasCreated(initialWorkflowCount);
-        }
-      } catch (err) {
-        console.error("Error creating workflow:", err);
-
-        // Check if workflow was created despite the error
-        await checkIfWorkflowWasCreated(initialWorkflowCount);
-      } finally {
-        setLoading(false);
-      }
-    } else {
+  const handleCreateStackOptimistic = async () => {
+    if (!formData.name.trim() || !formData.description.trim()) {
       toast.error("Please fill in both name and description fields.");
+      return;
     }
-  };
 
-  const checkIfWorkflowWasCreated = async (initialCount: number) => {
+    // 1. Generate a temporary ID (client-side)
+    const tempWorkflowId = uuidv4();
+    const newWorkflowName = formData.name.trim();
+    const newWorkflowDescription = formData.description.trim();
+
+    // Optimistically update UI states
+    setFormData({ name: "", description: "" }); // Clear modal form
+    setIsModalOpen(false); // Close modal
+    resetWorkflowBuilder(); // Clear any previous builder state
+
+    // 2. Update the local store with the new, temporary workflow details
+    setSelectedWorkflowId(tempWorkflowId);
+    setWorkflowName(newWorkflowName);
+    setWorkflowDescription(newWorkflowDescription);
+
+    // 3. Optimistically add the new workflow to the local 'stacks' list for immediate display
+    setStacks((prevStacks) => [
+      ...prevStacks,
+      {
+        id: tempWorkflowId,
+        name: newWorkflowName,
+        description: newWorkflowDescription,
+      },
+    ]);
+
+    // 4. Navigate immediately to the workflow builder page
+    navigate(`/workflows/${tempWorkflowId}/edit`);
+    toast.info("Creating workflow in the background..."); // Inform user
+
     try {
-      // Wait a bit for the database to update
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // 5. Initiate the API call to create the workflow on the backend
+      const response = await axios.post(`${API_BASE_URL}/create`, {
+        id: tempWorkflowId, // Send the temporary ID to the backend
+        name: newWorkflowName,
+        description: newWorkflowDescription,
+        nodes: "[]", 
+        edges: "[]", 
+        config: "{}",
+      });
 
-      const response = await axios.get<Stack[]>(`${API_BASE_URL}/list`);
-      const updatedStacks = response.data;
+      const actualWorkflowId = response.data.id; 
 
-      // Check if a new workflow was added by looking for one with matching name and description
-      const newWorkflow = updatedStacks.find(
-        stack => stack.name.trim() === formData.name.trim() &&
-                 stack.description.trim() === formData.description.trim()
+      
+      setStacks((prevStacks) =>
+        prevStacks.map((stack) =>
+          stack.id === tempWorkflowId
+            ? { ...stack, id: actualWorkflowId }
+            : stack
+        )
       );
 
-      if (newWorkflow || updatedStacks.length > initialCount) {
-        // Workflow was created in DB despite the error
-        setStacks(updatedStacks);
-        setFormData({ name: "", description: "" });
-        setIsModalOpen(false);
-        resetWorkflowBuilder();
+      setSelectedWorkflowId(actualWorkflowId);
 
-        if (newWorkflow) {
-          setSelectedWorkflowId(newWorkflow.id); // Set in store
-          navigate(`/workflows/${newWorkflow.id}/edit`);
-        } else {
-          navigate("/workflow-builder"); // Fallback
-        }
+      toast.success("Workflow created and synchronized!");
+    } catch (err) {
+      console.error("Error creating workflow in background:", err);
+      toast.error(
+        "Failed to create workflow on server. Please refresh or try again."
+      );
 
-        toast.success("Workflow created successfully!");
-      } else {
-        // Workflow was not created
-        toast.error("Failed to create workflow. Please try again.");
-      }
-    } catch (refetchError) {
-      console.error("Error checking workflow creation:", refetchError);
-      toast.error("Failed to verify workflow creation. Please refresh the page.");
+      setStacks((prevStacks) => prevStacks.filter(stack => stack.id !== tempWorkflowId));
+
     }
   };
 
   const handleEditStack = async (stackId: string) => {
     resetWorkflowBuilder();
-    setSelectedWorkflowId(stackId); 
+    setSelectedWorkflowId(stackId);
     setLoading(true);
 
     try {
       const response = await axios.get(`${API_BASE_URL}/${stackId}`);
       const workflowData = response.data;
 
-      if (workflowData.name)
-        useWorkflowStore.getState().workflowName = workflowData.name;
-      if (workflowData.description)
-        useWorkflowStore.getState().workflowDescription =
-          workflowData.description;
-      if (workflowData.nodes)
-        useWorkflowStore.getState().setNodes(workflowData.nodes);
-      if (workflowData.edges)
-        useWorkflowStore.getState().setEdges(workflowData.edges);
-      if (workflowData.config)
-        useWorkflowStore.getState().setWorkflowConfig(workflowData.config);
+      // Set workflow name and description in the store
+      useWorkflowStore.getState().setWorkflowName(workflowData.name || "");
+      useWorkflowStore.getState().setWorkflowDescription(workflowData.description || "");
 
-      // Navigate to the new URL format
+      // Ensure nodes, edges, and config are parsed correctly if they come as strings
+      const parsedNodes = typeof workflowData.nodes === 'string' && workflowData.nodes !== 'null' ? JSON.parse(workflowData.nodes) : (workflowData.nodes || []);
+      const parsedEdges = typeof workflowData.edges === 'string' && workflowData.edges !== 'null' ? JSON.parse(workflowData.edges) : (workflowData.edges || []);
+      const parsedConfig = typeof workflowData.config === 'string' && workflowData.config !== 'null' ? JSON.parse(workflowData.config) : (workflowData.config || {});
+
+
+      useWorkflowStore.getState().setNodes(parsedNodes);
+      useWorkflowStore.getState().setEdges(parsedEdges);
+      useWorkflowStore.getState().setWorkflowConfig(parsedConfig);
+
       navigate(`/workflows/${stackId}/edit`);
     } catch (err) {
       console.error(`Error fetching workflow with ID ${stackId}:`, err);
@@ -308,11 +307,10 @@ const GenAIStackPage: React.FC = () => {
                 Cancel
               </button>
               <button
-                onClick={handleCreateStack}
+                onClick={handleCreateStackOptimistic}
                 className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                disabled={loading}
               >
-                {loading ? "Creating..." : "Create"}
+                Create
               </button>
             </div>
           </div>
